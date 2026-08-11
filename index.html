@@ -1,0 +1,681 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario de Clara</title>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            safelist: [
+                'bg-shift-morning',
+                'bg-shift-day',
+                'bg-shift-afternoon',
+                'bg-shift-night',
+                'bg-shift-vacation'
+            ],
+            theme: {
+                extend: {
+                    colors: {
+                        medical: {
+                            50: '#f0f9fa',
+                            100: '#dcfce7',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            900: '#134e4a',
+                        },
+                        shift: {
+                            morning: '#fde047', // Yellow
+                            day: '#d8b4fe',    // Purple
+                            afternoon: '#f9a8d4', // Pink
+                            night: '#5eead4',   // Turquoise
+                            vacation: '#fb923c', // Orange
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f8fafc;
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .note-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .note-modal {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .note-indicator {
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: #1f2937;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 6px;
+            padding: 3px 6px;
+            margin-top: 4px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            backdrop-filter: blur(4px);
+        }
+
+        @media (min-width: 768px) {
+            .note-indicator {
+                font-size: 16px;
+                white-space: normal;
+                word-break: break-word;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <div id="error-display"
+        style="display:none; padding: 20px; color: white; background: #ef4444; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; font-family: sans-serif;">
+    </div>
+
+    <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            document.getElementById('error-display').style.display = 'block';
+            document.getElementById('error-display').innerHTML = '<strong>App Error:</strong> ' + message + '<br><small>If you see a blank page, inspect your console for specific code issues.</small>';
+        };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- 1. VANILLA DATE UTILS ---
+        const DateUtils = {
+            addDays: (date, days) => {
+                const result = new Date(date);
+                result.setDate(result.getDate() + days);
+                return result;
+            },
+            startOfWeek: (date) => {
+                const d = new Date(date);
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                d.setDate(diff);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            },
+            startOfMonth: (date) => new Date(date.getFullYear(), date.getMonth(), 1),
+            endOfMonth: (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0),
+            addWeeks: (date, weeks) => DateUtils.addDays(date, weeks * 7),
+            subWeeks: (date, weeks) => DateUtils.addDays(date, -weeks * 7),
+            addMonths: (date, months) => new Date(date.getFullYear(), date.getMonth() + months, 1),
+            subMonths: (date, months) => new Date(date.getFullYear(), date.getMonth() - months, 1),
+            isSameDay: (d1, d2) => d1.toDateString() === d2.toDateString(),
+            isSameMonth: (d1, d2) => d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear(),
+            formatMonthYear: (date) => date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+            formatDay: (date) => date.getDate(),
+            formatIso: (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            },
+            generateDays: (start, daysCount) => {
+                const dates = [];
+                for (let i = 0; i < daysCount; i++) {
+                    dates.push(DateUtils.addDays(start, i));
+                }
+                return dates;
+            }
+        };
+
+        // --- 2. ICONS ---
+        const Icons = {
+            ChevronLeft: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>,
+            ChevronRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>,
+            Lock: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>,
+            Calendar: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>,
+            Moon: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>,
+            Sun: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>,
+            Sunset: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10V2" /><path d="m4.93 10-1.41-1.41" /><path d="m20.49 8.59-1.41 1.41" /><path d="M2 18h2" /><path d="M20 18h2" /><path d="m6.34 11.66-1.41 1.41" /><path d="m19.07 10.93-1.41 1.41" /><path d="M16 18a4 4 0 0 0-8 0" /></svg>,
+            Clock: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
+            LogOut: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>,
+            Umbrella: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12a10.06 10.06 1 0 0-1-10 10 10.06 10.06 1 0 0-1-10-10" /><path d="M12 12v8a2 2 0 0 0 4 0" /><path d="M12 2v1" /></svg>
+        };
+
+        // --- 3. DATA ---
+        const SHIFT_TYPES = {
+            MORNING: { id: 'morning', label: 'M (8h-15h)', color: 'bg-shift-morning', icon: Icons.Sun },
+            DAY: { id: 'day', label: 'D (8h-20h)', color: 'bg-shift-day', icon: Icons.Clock },
+            AFTERNOON: { id: 'afternoon', label: 'T (13h-20h)', color: 'bg-shift-afternoon', icon: Icons.Sunset },
+            NIGHT: { id: 'night', label: 'N (20h-8h)', color: 'bg-shift-night', icon: Icons.Moon },
+            VACATION: { id: 'vacation', label: 'Vacation', color: 'bg-shift-vacation', icon: Icons.Umbrella },
+        };
+
+        // iCal subscription URL for Google Calendar (single source of truth)
+        const SYNC_URL = 'https://jbbguvtvmddxcklxeeeb.supabase.co/functions/v1/shifts-ics';
+
+        const SEEDED_SHIFTS = {
+            // March
+            '2026-03-02': 'afternoon', '2026-03-03': 'afternoon', '2026-03-04': 'afternoon', '2026-03-05': 'afternoon', '2026-03-06': 'afternoon',
+            '2026-03-09': 'day', '2026-03-10': 'night',
+            '2026-03-16': 'night',
+            '2026-03-20': 'day', '2026-03-21': 'night',
+            '2026-03-26': 'day', '2026-03-27': 'night',
+            '2026-03-31': 'day',
+            // February
+            '2026-02-12': 'afternoon',
+            '2026-02-13': 'afternoon',
+
+            // April
+            '2026-04-01': 'night',
+            '2026-04-06': 'day', '2026-04-07': 'night',
+            '2026-04-11': 'afternoon', '2026-04-12': 'night',
+            '2026-04-17': 'day', '2026-04-18': 'night',
+            '2026-04-22': 'day', '2026-04-23': 'night',
+            '2026-04-28': 'day', '2026-04-29': 'night',
+            // May
+            '2026-05-03': 'day', '2026-05-04': 'night',
+            '2026-05-09': 'day', '2026-05-10': 'night',
+            '2026-05-14': 'day', '2026-05-15': 'night',
+            '2026-05-20': 'day', '2026-05-21': 'night',
+            '2026-05-25': 'afternoon', '2026-05-26': 'afternoon', '2026-05-27': 'afternoon', '2026-05-28': 'afternoon', '2026-05-29': 'afternoon',
+            // June
+            '2026-06-01': 'day', '2026-06-02': 'night',
+            '2026-06-07': 'day', '2026-06-08': 'night',
+            '2026-06-12': 'day', '2026-06-13': 'night',
+            '2026-06-18': 'day', '2026-06-19': 'night',
+            '2026-06-23': 'day', '2026-06-24': 'night',
+            '2026-06-29': 'day', '2026-06-30': 'night',
+            // August
+            '2026-08-01': 'day', '2026-08-02': 'night',
+            '2026-08-06': 'day', '2026-08-07': 'night',
+            '2026-08-12': 'day', '2026-08-13': 'night',
+            '2026-08-17': 'afternoon', '2026-08-18': 'afternoon', '2026-08-19': 'afternoon', '2026-08-20': 'afternoon', '2026-08-21': 'afternoon',
+            '2026-08-24': 'day', '2026-08-25': 'night',
+            '2026-08-31': 'night',
+        };
+
+        // Populate July Vacations cleanly
+        for (let i = 1; i <= 31; i++) {
+            const dayStr = String(i).padStart(2, '0');
+            SEEDED_SHIFTS[`2026-07-${dayStr}`] = 'vacation';
+        }
+
+        const INITIAL_SHIFTS = SEEDED_SHIFTS;
+
+        // --- 4. APP COMPONENTS ---
+        const Login = ({ onLogin, onCancel }) => {
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (password === 'Clara') {
+                    onLogin('admin');
+                } else {
+                    setError('Incorrect password');
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 animate-fade-in">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 relative">
+                        <div className="text-center mb-8">
+                            <div className="bg-medical-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-medical-600">
+                                <Icons.Lock />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800">Edit Mode</h2>
+                            <p className="text-gray-500 mt-2">Enter password to make changes</p>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-medical-500 focus:border-transparent outline-none transition"
+                                    placeholder="Password"
+                                    autoFocus
+                                />
+                            </div>
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            <div className="flex gap-3">
+                                <button type="button" onClick={onCancel} className="w-1/3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg transition duration-200">
+                                    Cancel
+                                </button>
+                                <button type="submit" className="w-2/3 bg-medical-600 hover:bg-medical-700 text-white font-semibold py-3 rounded-lg transition duration-200">
+                                    Access
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 5. SUPABASE CONFIG ---
+        const SUPABASE_URL = 'https://jbbguvtvmddxcklxeeeb.supabase.co';
+        // Change this line in your HTML:
+        const SUPABASE_KEY = 'sb_publishable_C3Fp8maSqqEF2zIzgKos9w__pAKImCj'; // <-- Paste your FULL publishable key here
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const App = () => {
+            const [userRole, setUserRole] = useState('guest'); // 'admin' | 'guest'
+            const [showLogin, setShowLogin] = useState(false);
+            const [showSync, setShowSync] = useState(false);
+            const [copied, setCopied] = useState(false);
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [view, setView] = useState('week');
+            const [shifts, setShifts] = useState(INITIAL_SHIFTS);
+            const [notes, setNotes] = useState({});
+            const [noteModal, setNoteModal] = useState(null);
+            const [noteText, setNoteText] = useState('');
+            const [longPressTimer, setLongPressTimer] = useState(null);
+
+            useEffect(() => {
+                const fetchShifts = async () => {
+                    const { data, error } = await supabase.from('shifts').select('*');
+                    if (error) {
+                        console.error("Error fetching shifts:", error);
+                        return;
+                    }
+
+                    if (data) {
+                        const dbShifts = {};
+                        const dbNotes = {};
+                        data.forEach(row => {
+                            dbShifts[row.date] = row.shift_type === 'none' ? null : row.shift_type;
+                            if (row.note) dbNotes[row.date] = row.note;
+                        });
+
+                        setShifts(prev => ({
+                            ...prev,
+                            ...dbShifts
+                        }));
+                        setNotes(dbNotes);
+                    }
+                };
+
+                fetchShifts();
+            }, []);
+
+            const headerTitle = useMemo(() => DateUtils.formatMonthYear(currentDate), [currentDate]);
+
+            const days = useMemo(() => {
+                if (view === 'week') {
+                    const start = DateUtils.startOfWeek(currentDate);
+                    return DateUtils.generateDays(start, 7);
+                } else {
+                    const startMonth = DateUtils.startOfMonth(currentDate);
+                    const startGrid = DateUtils.startOfWeek(startMonth);
+                    return DateUtils.generateDays(startGrid, 42);
+                }
+            }, [currentDate, view]);
+
+            const navigate = (direction) => {
+                if (view === 'week') {
+                    setCurrentDate(prev => direction === 1 ? DateUtils.addWeeks(prev, 1) : DateUtils.subWeeks(prev, 1));
+                } else {
+                    setCurrentDate(prev => direction === 1 ? DateUtils.addMonths(prev, 1) : DateUtils.subMonths(prev, 1));
+                }
+            };
+
+            const toggleShift = async (dateStr) => {
+                if (userRole !== 'admin') return;
+
+                const current = shifts[dateStr];
+                let nextValue;
+                if (!current) nextValue = 'morning';
+                else if (current === 'morning') nextValue = 'day';
+                else if (current === 'day') nextValue = 'afternoon';
+                else if (current === 'afternoon') nextValue = 'night';
+                else if (current === 'night') nextValue = 'vacation';
+                else nextValue = null;
+
+                if (nextValue) {
+                    setShifts(prev => ({ ...prev, [dateStr]: nextValue }));
+                } else {
+                    setShifts(prev => {
+                        const copy = { ...prev };
+                        delete copy[dateStr];
+                        return copy;
+                    });
+                }
+
+                const dbValue = nextValue || 'none';
+
+                const { error } = await supabase
+                    .from('shifts')
+                    .upsert({ date: dateStr, shift_type: dbValue });
+
+                if (error) {
+                    console.error("Error saving shift:", error);
+                    alert("Error saving to database: " + error.message);
+                } else {
+                    let shiftName = "Cleared";
+                    if (nextValue) {
+                        const shiftDetail = Object.values(SHIFT_TYPES).find(t => t.id === nextValue);
+                        if (shiftDetail) shiftName = shiftDetail.label;
+                    }
+
+                    const message = `Hello! My shift on ${dateStr} has been updated to: ${shiftName}.`;
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+                    if (window.confirm(`Shift updated! Do you want to share this update to WhatsApp?\n\nMessage: "${message}"`)) {
+                        window.open(whatsappUrl, '_blank');
+                    }
+                }
+            };
+
+            const openNoteModal = (dateStr, e) => {
+                if (e) e.preventDefault();
+                setNoteModal(dateStr);
+                setNoteText(notes[dateStr] || '');
+            };
+
+            const closeNoteModal = () => {
+                setNoteModal(null);
+                setNoteText('');
+            };
+
+            const handleCopySyncUrl = async () => {
+                try {
+                    await navigator.clipboard.writeText(SYNC_URL);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                } catch (err) {
+                    window.alert('Could not copy automatically. Please copy the link manually:\n\n' + SYNC_URL);
+                }
+            };
+
+            const saveNote = async () => {
+                if (!noteModal) return;
+                const dateStr = noteModal;
+                const trimmed = noteText.trim();
+
+                if (trimmed) {
+                    setNotes(prev => ({ ...prev, [dateStr]: trimmed }));
+                } else {
+                    setNotes(prev => {
+                        const copy = { ...prev };
+                        delete copy[dateStr];
+                        return copy;
+                    });
+                }
+
+                const currentShift = shifts[dateStr] || 'none';
+                const { error } = await supabase
+                    .from('shifts')
+                    .upsert({ date: dateStr, shift_type: currentShift, note: trimmed || null });
+
+                if (error) {
+                    console.error('Error saving note:', error);
+                    alert('Error saving note: ' + error.message);
+                } else {
+                    const action = trimmed ? "added/updated" : "removed";
+                    const message = `Hello! I have ${action} a note for my shift on ${dateStr}${trimmed ? `: "${trimmed}"` : '.'}`;
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+                    if (window.confirm(`Note saved! Do you want to share this update to WhatsApp?\n\nMessage: "${message}"`)) {
+                        window.open(whatsappUrl, '_blank');
+                    }
+                }
+
+                closeNoteModal();
+            };
+
+            const handleTouchStart = (dateStr, e) => {
+                const timer = setTimeout(() => {
+                    openNoteModal(dateStr);
+                }, 600);
+                setLongPressTimer(timer);
+            };
+
+            const handleTouchEnd = () => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    setLongPressTimer(null);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50 pb-20">
+                    <header className="bg-white shadow-sm sticky top-0 z-10">
+                        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <h1 className="text-xl font-bold text-gray-800 capitalize flex items-center gap-2">
+                                <span className="bg-medical-100 p-2 rounded-lg text-medical-600"><Icons.Calendar /></span>
+                                {headerTitle}
+                            </h1>
+                            <div className="flex items-center gap-2">
+                                {userRole === 'admin' ? (
+                                    <>
+                                        <span className="text-xs font-medium text-medical-600 flex items-center gap-1 bg-medical-50 px-2 py-1 rounded-full border border-medical-100 hidden sm:flex">
+                                            <div className="w-2 h-2 rounded-full bg-medical-500 animate-pulse"></div>
+                                            Auto-Sync
+                                        </span>
+                                        <button onClick={() => setShowSync(true)} className="px-3 py-1.5 bg-white border border-medical-200 hover:bg-medical-50 text-medical-600 text-sm font-medium rounded-lg transition flex items-center gap-1.5" title="Sync with Google Calendar">
+                                            <Icons.Calendar />
+                                            <span>Google Calendar</span>
+                                        </button>
+                                        <button onClick={() => setUserRole('guest')} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition" title="Exit Edit Mode">
+                                            Done
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button onClick={() => setShowLogin(true)} className="px-3 py-1.5 bg-medical-600 hover:bg-medical-700 text-white text-sm font-medium rounded-lg transition flex items-center gap-1.5">
+                                        <div className="w-4 h-4 flex items-center justify-center shrink-0"><Icons.Lock /></div>
+                                        <span>Edit</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="max-w-4xl mx-auto px-4 pb-4 flex items-center justify-between">
+                            <div className="flex bg-gray-100 rounded-lg p-1">
+                                <button onClick={() => setView('week')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${view === 'week' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Week</button>
+                                <button onClick={() => setView('month')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${view === 'month' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Month</button>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition"><Icons.ChevronLeft /></button>
+                                <button onClick={() => navigate(1)} className="p-2 hover:bg-gray-100 rounded-full transition"><Icons.ChevronRight /></button>
+                            </div>
+                        </div>
+
+                        <div className="max-w-4xl mx-auto px-4 grid grid-cols-7 gap-1 text-center pb-2">
+                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                                <div key={d} className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{d}</div>
+                            ))}
+                        </div>
+                    </header>
+
+                    <main className="max-w-4xl mx-auto px-4 pt-4">
+                        <div className={`grid grid-cols-7 gap-2 ${view === 'month' ? 'auto-rows-fr' : ''}`}>
+                            {days.map((day) => {
+                                const dateStr = DateUtils.formatIso(day);
+                                const isToday = DateUtils.isSameDay(day, new Date());
+                                const isCurrentMonth = DateUtils.isSameMonth(day, currentDate);
+                                const shiftId = shifts[dateStr];
+                                const shift = shiftId ? Object.values(SHIFT_TYPES).find(t => t.id === shiftId) : null;
+
+                                const opacityClass = (view === 'month' && !isCurrentMonth) ? 'opacity-30' : 'opacity-100';
+                                const ShiftIcon = shift ? shift.icon : null;
+                                const dayNote = notes[dateStr];
+
+                                return (
+                                    <div
+                                        key={dateStr}
+                                        onClick={() => toggleShift(dateStr)}
+                                        onContextMenu={(e) => openNoteModal(dateStr, e)}
+                                        onTouchStart={(e) => handleTouchStart(dateStr, e)}
+                                        onTouchEnd={handleTouchEnd}
+                                        onTouchMove={handleTouchEnd}
+                                        title={dayNote ? `📝 ${dayNote}` : 'Right-click to add a note'}
+                                        className={`
+                                            relative min-h-[5rem] md:min-h-[7rem] rounded-xl border transition cursor-pointer flex flex-col items-center justify-start py-2
+                                            ${isToday ? 'border-medical-500 ring-2 ring-medical-500 ring-offset-1' : 'border-gray-100 hover:border-medical-200'}
+                                            ${shift ? shift.color : (isToday ? 'bg-medical-50' : 'bg-white')}
+                                            ${opacityClass}
+                                        `}
+                                    >
+                                        <span className={`text-sm font-semibold mb-1 ${shift ? 'text-gray-800' : 'text-gray-500'}`}>
+                                            {DateUtils.formatDay(day)}
+                                        </span>
+                                        {shift && (
+                                            <div className="flex flex-col items-center animate-fade-in">
+                                                <div className="text-gray-700 opacity-75 transform scale-90"><ShiftIcon /></div>
+                                                <span className="text-[10px] uppercase font-bold text-gray-700 mt-1 tracking-wider hidden md:block">{shift.label}</span>
+                                            </div>
+                                        )}
+                                        {dayNote && (
+                                            <div className="note-indicator mt-auto w-full text-center" title={dayNote}>
+                                                📝 {dayNote}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </main>
+
+                    {noteModal && (
+                        <div className="note-modal-overlay" onClick={closeNoteModal}>
+                            <div className="note-modal" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-lg font-bold text-gray-800 mb-1">📝 Note for {noteModal}</h3>
+                                <p className="text-xs text-gray-400 mb-3">This note will appear on the calendar day.</p>
+                                {userRole === 'admin' ? (
+                                    <>
+                                        <textarea
+                                            value={noteText}
+                                            onChange={e => setNoteText(e.target.value)}
+                                            placeholder="Write your note here..."
+                                            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:border-transparent resize-none"
+                                            rows={3}
+                                            maxLength={100}
+                                            autoFocus
+                                        />
+                                        <p className="text-xs text-gray-400 mt-1 text-right">{noteText.length}/100</p>
+                                        <div className="flex gap-2 mt-3">
+                                            <button onClick={closeNoteModal} className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition">Cancel</button>
+                                            <button onClick={saveNote} className="flex-1 px-4 py-2 rounded-lg bg-medical-500 text-white text-sm font-medium hover:bg-medical-600 transition">Save</button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 min-h-[60px]">
+                                            {notes[noteModal] || <span className="text-gray-400 italic">No note</span>}
+                                        </div>
+                                        <button onClick={closeNoteModal} className="w-full mt-3 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition">Close</button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {showSync && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 animate-fade-in" onClick={() => setShowSync(false)}>
+                            <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 relative" onClick={e => e.stopPropagation()}>
+                                <h2 className="text-xl font-bold text-gray-800 mb-1">Google Calendar</h2>
+                                <p className="text-gray-500 text-sm mb-4">Subscribe to Clara's shifts in Google Calendar</p>
+                                <input
+                                    readOnly
+                                    value={SYNC_URL}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 bg-gray-50 mb-3"
+                                />
+                                <div className="flex gap-2 mb-4">
+                                    <button onClick={handleCopySyncUrl} className="flex-1 px-4 py-2 rounded-lg bg-medical-500 text-white text-sm font-medium hover:bg-medical-600 transition">
+                                        {copied ? 'Copied!' : 'Copy'}
+                                    </button>
+                                    <button onClick={() => setShowSync(false)} className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition">
+                                        Close
+                                    </button>
+                                </div>
+                                <div className="space-y-1 text-gray-500 text-sm">
+                                    <p>1. Open Google Calendar on your phone or computer</p>
+                                    <p>2. Go to Other calendars → Add by URL</p>
+                                    <p>3. Paste the link above and press Add</p>
+                                    <p>4. Updates appear automatically (can take a few hours)</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showLogin && (
+                        <Login
+                            onLogin={(role) => {
+                                setUserRole(role);
+                                setShowLogin(false);
+                            }}
+                            onCancel={() => setShowLogin(false)}
+                        />
+                    )}
+
+                    <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-pb">
+                        <div className="max-w-4xl mx-auto flex flex-wrap justify-center gap-4 text-xs">
+                            {Object.values(SHIFT_TYPES).map(type => (
+                                <div key={type.id} className="flex items-center gap-2">
+                                    <div className={`w-4 h-4 rounded ${type.color}`}></div>
+                                    <span className="font-medium text-gray-600">{type.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
+
+

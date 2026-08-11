@@ -1,0 +1,8 @@
+# Supabase local/dev artifacts
+supabase/.temp/
+supabase/.branches/
+supabase/.env*
+**/.env
+
+# OS
+.DS_Store
