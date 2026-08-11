@@ -77,7 +77,14 @@ supabase init
 
 # 4. Deploy the function (important: --no-verify-jwt, see note below)
 supabase functions deploy shifts-ics --no-verify-jwt
+
+# If the local bundler fails (e.g. "entrypoint path does not exist" in some
+# sandboxed environments), use server-side bundling instead:
+supabase functions deploy shifts-ics --no-verify-jwt --use-api
 ```
+
+> **Status in this project:** already done and verified on 2026-08-11 — the
+> feed returns `HTTP 200` with a valid iCal document.
 
 **Why `--no-verify-jwt`:** by default Supabase edge functions reject requests
 without a valid login token. Google Calendar subscribes to the feed URL with no
