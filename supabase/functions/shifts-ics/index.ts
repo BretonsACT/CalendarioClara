@@ -28,6 +28,8 @@ const SHIFT_MAP: Record<string, { start: string; end: string; label: string }> =
   day: { start: '08:00', end: '20:00', label: 'D (8h-20h)' },
   afternoon: { start: '13:00', end: '20:00', label: 'T (13h-20h)' },
   night: { start: '20:00', end: '00:00', label: 'N (20h-8h)' },
+  lunch: { start: '11:30', end: '15:30', label: 'Comida (11:30)' },
+  dinner: { start: '20:30', end: '23:30', label: 'Cena (20:30)' },
 };
 
 /** Today as YYYY-MM-DD in the Europe/Madrid timezone (en-CA yields ISO format). */

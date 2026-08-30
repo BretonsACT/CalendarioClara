@@ -23,7 +23,9 @@
                 'bg-shift-day',
                 'bg-shift-afternoon',
                 'bg-shift-night',
-                'bg-shift-vacation'
+                'bg-shift-vacation',
+                'bg-shift-lunch',
+                'bg-shift-dinner'
             ],
             theme: {
                 extend: {
@@ -36,11 +38,13 @@
                             900: '#134e4a',
                         },
                         shift: {
-                            morning: '#fde047', // Yellow
-                            day: '#d8b4fe',    // Purple
-                            afternoon: '#f9a8d4', // Pink
-                            night: '#5eead4',   // Turquoise
+                            morning: '#fde047',  // Yellow
+                            day: '#d8b4fe',      // Purple
+                            afternoon: '#f9a8d4',// Pink
+                            night: '#5eead4',    // Turquoise
                             vacation: '#fb923c', // Orange
+                            lunch: '#86efac',    // Light Green / Lime
+                            dinner: '#93c5fd',   // Sky Blue
                         }
                     },
                     fontFamily: {
@@ -229,6 +233,8 @@
             DAY: { id: 'day', label: 'D (8h-20h)', color: 'bg-shift-day', icon: Icons.Clock },
             AFTERNOON: { id: 'afternoon', label: 'T (13h-20h)', color: 'bg-shift-afternoon', icon: Icons.Sunset },
             NIGHT: { id: 'night', label: 'N (20h-8h)', color: 'bg-shift-night', icon: Icons.Moon },
+            LUNCH: { id: 'lunch', label: 'Comida (11:30)', color: 'bg-shift-lunch', icon: Icons.Utensils },
+            DINNER: { id: 'dinner', label: 'Cena (20:30)', color: 'bg-shift-dinner', icon: Icons.Moon },
             VACATION: { id: 'vacation', label: 'Vacation', color: 'bg-shift-vacation', icon: Icons.Umbrella },
         };
 
@@ -419,7 +425,9 @@
                 else if (current === 'morning') nextValue = 'day';
                 else if (current === 'day') nextValue = 'afternoon';
                 else if (current === 'afternoon') nextValue = 'night';
-                else if (current === 'night') nextValue = 'vacation';
+                else if (current === 'night') nextValue = 'lunch';
+                else if (current === 'lunch') nextValue = 'dinner';
+                else if (current === 'dinner') nextValue = 'vacation';
                 else nextValue = null;
 
                 if (nextValue) {
@@ -645,48 +653,45 @@
                                         onTouchStart={(e) => handleTouchStart(dateStr, e)}
                                         onTouchEnd={handleTouchEnd}
                                         onTouchMove={handleTouchEnd}
-                                        title={dayNote ? `📝 ${dayNote}` : 'Click derecho / mantener pulsado para notas o salidas'}
+                                        title={dayNote ? `📝 ${dayNote}` : 'Click derecho / mantener pulsado para notas o ajustar hora'}
                                         className={`
-                                            relative min-h-[6.5rem] md:min-h-[8.5rem] w-full rounded-xl border-2 transition cursor-pointer flex flex-col justify-between p-1 md:p-2 shadow-sm
-                                            ${isToday ? 'border-medical-500 ring-2 ring-medical-500 ring-offset-1 z-10' : 'border-gray-200/80 hover:border-medical-300'}
+                                            relative min-h-[5.5rem] md:min-h-[7.5rem] w-full rounded-xl border transition cursor-pointer flex flex-col justify-between p-2 shadow-sm
+                                            ${isToday ? 'border-medical-500 ring-2 ring-medical-500 ring-offset-1 z-10' : 'border-gray-200 hover:border-medical-300'}
                                             ${shift ? shift.color : (isToday ? 'bg-medical-50/50' : 'bg-white')}
                                             ${opacityClass}
                                         `}
                                     >
-                                         {/* Header of the cell: Day number and Shift Icon/Label */}
+                                         {/* Top: Day number */}
                                          <div className="w-full flex items-center justify-between">
                                              <span className={`text-sm md:text-base font-bold ${shift ? 'text-gray-900' : 'text-gray-600'}`}>
                                                  {DateUtils.formatDay(day)}
                                              </span>
-                                             {shift && (
-                                                 <div className="flex items-center gap-1">
-                                                     <div className="text-gray-800 opacity-90 transform scale-75 md:scale-90"><ShiftIcon /></div>
-                                                     <span className="text-[10px] uppercase font-black text-gray-800 tracking-wider hidden lg:inline">{shift.label.split(' ')[0]}</span>
-                                                 </div>
-                                             )}
                                          </div>
 
-                                         {/* Center of the cell: Shift Label on mobile if active */}
+                                         {/* Center: Large Shift Icon and Label filling the cell */}
                                          {shift && (
-                                             <div className="w-full text-center py-0.5">
-                                                 <span className="text-[10px] md:text-xs font-black uppercase text-gray-800 bg-white/60 px-1.5 py-0.5 rounded backdrop-blur-sm block truncate">
-                                                     {shift.label}
+                                             <div className="flex flex-col items-center justify-center my-auto animate-fade-in text-center">
+                                                 <div className="text-gray-800 opacity-85 transform scale-110 md:scale-125 mb-1">
+                                                     <ShiftIcon />
+                                                 </div>
+                                                 <span className="text-[11px] md:text-xs font-black uppercase text-gray-800 tracking-tight leading-tight">
+                                                     {shiftId === 'lunch' && dayLunch ? `Comida (${dayLunch})` : 
+                                                      shiftId === 'dinner' && dayDinner ? `Cena (${dayDinner})` : 
+                                                      shift.label}
                                                  </span>
                                              </div>
                                          )}
-                                         
-                                         {/* Bottom of the cell: Full width Outing and Note Badges */}
-                                         <div className="w-full flex flex-col gap-1.5 mt-auto pt-1">
-                                             {dayLunch && (
+
+                                         {/* Bottom: Outing / Note Badges if set independently */}
+                                         <div className="w-full flex flex-col gap-1 mt-auto">
+                                             {shiftId !== 'lunch' && dayLunch && (
                                                  <div className="outing-badge outing-lunch" title={`Salida a comer: ${dayLunch}`}>
-                                                     <span className="text-sm md:text-base">🍽️</span>
-                                                     <span className="tracking-tight">{dayLunch}</span>
+                                                     <span className="text-xs">🍽️</span> <span>{dayLunch}</span>
                                                  </div>
                                              )}
-                                             {dayDinner && (
+                                             {shiftId !== 'dinner' && dayDinner && (
                                                  <div className="outing-badge outing-dinner" title={`Salida a cenar: ${dayDinner}`}>
-                                                     <span className="text-sm md:text-base">🌙</span>
-                                                     <span className="tracking-tight">{dayDinner}</span>
+                                                     <span className="text-xs">🌙</span> <span>{dayDinner}</span>
                                                  </div>
                                              )}
                                              {dayNote && (
