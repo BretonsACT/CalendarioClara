@@ -93,14 +93,14 @@
         }
 
         .note-indicator {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             line-height: 1.3;
             color: #1f2937;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 6px;
-            padding: 3px 6px;
-            margin-top: 4px;
+            padding: 2px 4px;
+            margin-top: 3px;
             max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -108,11 +108,44 @@
             backdrop-filter: blur(4px);
         }
 
+        .outing-badge {
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.2;
+            border-radius: 6px;
+            padding: 2px 5px;
+            margin-top: 3px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .outing-lunch {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .outing-dinner {
+            background-color: #ede9fe;
+            color: #5b21b6;
+            border: 1px solid #ddd6fe;
+        }
+
         @media (min-width: 768px) {
             .note-indicator {
-                font-size: 16px;
+                font-size: 15px;
                 white-space: normal;
                 word-break: break-word;
+            }
+            .outing-badge {
+                font-size: 12px;
+                padding: 2px 6px;
             }
         }
     </style>
@@ -158,7 +191,7 @@
             subMonths: (date, months) => new Date(date.getFullYear(), date.getMonth() - months, 1),
             isSameDay: (d1, d2) => d1.toDateString() === d2.toDateString(),
             isSameMonth: (d1, d2) => d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear(),
-            formatMonthYear: (date) => date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+            formatMonthYear: (date) => date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }),
             formatDay: (date) => date.getDate(),
             formatIso: (date) => {
                 const year = date.getFullYear();
@@ -186,7 +219,8 @@
             Sunset: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10V2" /><path d="m4.93 10-1.41-1.41" /><path d="m20.49 8.59-1.41 1.41" /><path d="M2 18h2" /><path d="M20 18h2" /><path d="m6.34 11.66-1.41 1.41" /><path d="m19.07 10.93-1.41 1.41" /><path d="M16 18a4 4 0 0 0-8 0" /></svg>,
             Clock: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
             LogOut: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>,
-            Umbrella: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12a10.06 10.06 1 0 0-1-10 10 10.06 10.06 1 0 0-1-10-10" /><path d="M12 12v8a2 2 0 0 0 4 0" /><path d="M12 2v1" /></svg>
+            Umbrella: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12a10.06 10.06 1 0 0-1-10 10 10.06 10.06 1 0 0-1-10-10" /><path d="M12 12v8a2 2 0 0 0 4 0" /><path d="M12 2v1" /></svg>,
+            Utensils: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/><path d="M15 2v14a2 2 0 0 1-2 2 2 2 0 0 1-2-2V2"/><path d="M6 2v20"/><path d="M2 2v4a4 4 0 0 0 8 0V2"/></svg>,
         };
 
         // --- 3. DATA ---
@@ -302,8 +336,7 @@
 
         // --- 5. SUPABASE CONFIG ---
         const SUPABASE_URL = 'https://jbbguvtvmddxcklxeeeb.supabase.co';
-        // Change this line in your HTML:
-        const SUPABASE_KEY = 'sb_publishable_C3Fp8maSqqEF2zIzgKos9w__pAKImCj'; // <-- Paste your FULL publishable key here
+        const SUPABASE_KEY = 'sb_publishable_C3Fp8maSqqEF2zIzgKos9w__pAKImCj';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const App = () => {
@@ -315,8 +348,12 @@
             const [view, setView] = useState('week');
             const [shifts, setShifts] = useState(INITIAL_SHIFTS);
             const [notes, setNotes] = useState({});
+            const [lunchTimes, setLunchTimes] = useState({});
+            const [dinnerTimes, setDinnerTimes] = useState({});
             const [noteModal, setNoteModal] = useState(null);
             const [noteText, setNoteText] = useState('');
+            const [modalLunchTime, setModalLunchTime] = useState('');
+            const [modalDinnerTime, setModalDinnerTime] = useState('');
             const [longPressTimer, setLongPressTimer] = useState(null);
 
             useEffect(() => {
@@ -330,9 +367,13 @@
                     if (data) {
                         const dbShifts = {};
                         const dbNotes = {};
+                        const dbLunch = {};
+                        const dbDinner = {};
                         data.forEach(row => {
                             dbShifts[row.date] = row.shift_type === 'none' ? null : row.shift_type;
                             if (row.note) dbNotes[row.date] = row.note;
+                            if (row.lunch_time) dbLunch[row.date] = row.lunch_time;
+                            if (row.dinner_time) dbDinner[row.date] = row.dinner_time;
                         });
 
                         setShifts(prev => ({
@@ -340,6 +381,8 @@
                             ...dbShifts
                         }));
                         setNotes(dbNotes);
+                        setLunchTimes(dbLunch);
+                        setDinnerTimes(dbDinner);
                     }
                 };
 
@@ -393,7 +436,13 @@
 
                 const { error } = await supabase
                     .from('shifts')
-                    .upsert({ date: dateStr, shift_type: dbValue });
+                    .upsert({
+                        date: dateStr,
+                        shift_type: dbValue,
+                        note: notes[dateStr] || null,
+                        lunch_time: lunchTimes[dateStr] || null,
+                        dinner_time: dinnerTimes[dateStr] || null
+                    });
 
                 if (error) {
                     console.error("Error saving shift:", error);
@@ -418,11 +467,15 @@
                 if (e) e.preventDefault();
                 setNoteModal(dateStr);
                 setNoteText(notes[dateStr] || '');
+                setModalLunchTime(lunchTimes[dateStr] || '');
+                setModalDinnerTime(dinnerTimes[dateStr] || '');
             };
 
             const closeNoteModal = () => {
                 setNoteModal(null);
                 setNoteText('');
+                setModalLunchTime('');
+                setModalDinnerTime('');
             };
 
             const handleCopySyncUrl = async () => {
@@ -435,15 +488,38 @@
                 }
             };
 
-            const saveNote = async () => {
+            const saveDetails = async () => {
                 if (!noteModal) return;
                 const dateStr = noteModal;
-                const trimmed = noteText.trim();
+                const trimmedNote = noteText.trim();
+                const trimmedLunch = modalLunchTime.trim();
+                const trimmedDinner = modalDinnerTime.trim();
 
-                if (trimmed) {
-                    setNotes(prev => ({ ...prev, [dateStr]: trimmed }));
+                // Update local state
+                if (trimmedNote) {
+                    setNotes(prev => ({ ...prev, [dateStr]: trimmedNote }));
                 } else {
                     setNotes(prev => {
+                        const copy = { ...prev };
+                        delete copy[dateStr];
+                        return copy;
+                    });
+                }
+
+                if (trimmedLunch) {
+                    setLunchTimes(prev => ({ ...prev, [dateStr]: trimmedLunch }));
+                } else {
+                    setLunchTimes(prev => {
+                        const copy = { ...prev };
+                        delete copy[dateStr];
+                        return copy;
+                    });
+                }
+
+                if (trimmedDinner) {
+                    setDinnerTimes(prev => ({ ...prev, [dateStr]: trimmedDinner }));
+                } else {
+                    setDinnerTimes(prev => {
                         const copy = { ...prev };
                         delete copy[dateStr];
                         return copy;
@@ -453,17 +529,28 @@
                 const currentShift = shifts[dateStr] || 'none';
                 const { error } = await supabase
                     .from('shifts')
-                    .upsert({ date: dateStr, shift_type: currentShift, note: trimmed || null });
+                    .upsert({
+                        date: dateStr,
+                        shift_type: currentShift,
+                        note: trimmedNote || null,
+                        lunch_time: trimmedLunch || null,
+                        dinner_time: trimmedDinner || null
+                    });
 
                 if (error) {
-                    console.error('Error saving note:', error);
-                    alert('Error saving note: ' + error.message);
+                    console.error('Error saving details:', error);
+                    alert('Error saving details: ' + error.message);
                 } else {
-                    const action = trimmed ? "added/updated" : "removed";
-                    const message = `Hello! I have ${action} a note for my shift on ${dateStr}${trimmed ? `: "${trimmed}"` : '.'}`;
+                    const parts = [];
+                    if (trimmedLunch) parts.push(`🍽️ Salida a comer a las ${trimmedLunch}`);
+                    if (trimmedDinner) parts.push(`🌙 Salida a cenar a las ${trimmedDinner}`);
+                    if (trimmedNote) parts.push(`Nota: "${trimmedNote}"`);
+
+                    const detailsStr = parts.length > 0 ? parts.join(' | ') : 'Detalles eliminados';
+                    const message = `Actualización para ${dateStr}: ${detailsStr}`;
                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
-                    if (window.confirm(`Note saved! Do you want to share this update to WhatsApp?\n\nMessage: "${message}"`)) {
+                    if (window.confirm(`Guardado correctamente. ¿Quieres compartir este detalle por WhatsApp?\n\n"${message}"`)) {
                         window.open(whatsappUrl, '_blank');
                     }
                 }
@@ -547,6 +634,8 @@
                                 const opacityClass = (view === 'month' && !isCurrentMonth) ? 'opacity-30' : 'opacity-100';
                                 const ShiftIcon = shift ? shift.icon : null;
                                 const dayNote = notes[dateStr];
+                                const dayLunch = lunchTimes[dateStr];
+                                const dayDinner = dinnerTimes[dateStr];
 
                                 return (
                                     <div
@@ -556,28 +645,42 @@
                                         onTouchStart={(e) => handleTouchStart(dateStr, e)}
                                         onTouchEnd={handleTouchEnd}
                                         onTouchMove={handleTouchEnd}
-                                        title={dayNote ? `📝 ${dayNote}` : 'Right-click to add a note'}
+                                        title={dayNote ? `📝 ${dayNote}` : 'Click derecho para notas o salidas'}
                                         className={`
-                                            relative min-h-[5rem] md:min-h-[7rem] rounded-xl border transition cursor-pointer flex flex-col items-center justify-start py-2
+                                            relative min-h-[5.5rem] md:min-h-[7.5rem] rounded-xl border transition cursor-pointer flex flex-col items-center justify-start p-1.5
                                             ${isToday ? 'border-medical-500 ring-2 ring-medical-500 ring-offset-1' : 'border-gray-100 hover:border-medical-200'}
                                             ${shift ? shift.color : (isToday ? 'bg-medical-50' : 'bg-white')}
                                             ${opacityClass}
                                         `}
                                     >
-                                        <span className={`text-sm font-semibold mb-1 ${shift ? 'text-gray-800' : 'text-gray-500'}`}>
+                                        <span className={`text-sm font-semibold mb-0.5 ${shift ? 'text-gray-800' : 'text-gray-500'}`}>
                                             {DateUtils.formatDay(day)}
                                         </span>
                                         {shift && (
-                                            <div className="flex flex-col items-center animate-fade-in">
+                                            <div className="flex flex-col items-center animate-fade-in mb-1">
                                                 <div className="text-gray-700 opacity-75 transform scale-90"><ShiftIcon /></div>
-                                                <span className="text-[10px] uppercase font-bold text-gray-700 mt-1 tracking-wider hidden md:block">{shift.label}</span>
+                                                <span className="text-[10px] uppercase font-bold text-gray-700 tracking-wider hidden md:block">{shift.label}</span>
                                             </div>
                                         )}
-                                        {dayNote && (
-                                            <div className="note-indicator mt-auto w-full text-center" title={dayNote}>
-                                                📝 {dayNote}
-                                            </div>
-                                        )}
+                                        
+                                        {/* Outing Badges */}
+                                        <div className="w-full flex flex-col gap-1 mt-auto">
+                                            {dayLunch && (
+                                                <div className="outing-badge outing-lunch" title={`Salida a comer: ${dayLunch}`}>
+                                                    <span>🍽️</span> <span>{dayLunch}</span>
+                                                </div>
+                                            )}
+                                            {dayDinner && (
+                                                <div className="outing-badge outing-dinner" title={`Salida a cenar: ${dayDinner}`}>
+                                                    <span>🌙</span> <span>{dayDinner}</span>
+                                                </div>
+                                            )}
+                                            {dayNote && (
+                                                <div className="note-indicator w-full text-center" title={dayNote}>
+                                                    📝 {dayNote}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -586,33 +689,157 @@
 
                     {noteModal && (
                         <div className="note-modal-overlay" onClick={closeNoteModal}>
-                            <div className="note-modal" onClick={e => e.stopPropagation()}>
-                                <h3 className="text-lg font-bold text-gray-800 mb-1">📝 Note for {noteModal}</h3>
-                                <p className="text-xs text-gray-400 mb-3">This note will appear on the calendar day.</p>
+                            <div className="note-modal max-w-lg" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                        <span>📅</span> {noteModal}
+                                    </h3>
+                                    <span className="text-xs px-2 py-1 bg-gray-100 rounded-full font-medium text-gray-600">
+                                        {userRole === 'admin' ? 'Editar Día' : 'Detalles'}
+                                    </span>
+                                </div>
+
                                 {userRole === 'admin' ? (
-                                    <>
-                                        <textarea
-                                            value={noteText}
-                                            onChange={e => setNoteText(e.target.value)}
-                                            placeholder="Write your note here..."
-                                            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:border-transparent resize-none"
-                                            rows={3}
-                                            maxLength={100}
-                                            autoFocus
-                                        />
-                                        <p className="text-xs text-gray-400 mt-1 text-right">{noteText.length}/100</p>
-                                        <div className="flex gap-2 mt-3">
-                                            <button onClick={closeNoteModal} className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition">Cancel</button>
-                                            <button onClick={saveNote} className="flex-1 px-4 py-2 rounded-lg bg-medical-500 text-white text-sm font-medium hover:bg-medical-600 transition">Save</button>
+                                    <div className="space-y-4">
+                                        {/* Salidas Familiares Section */}
+                                        <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-100 space-y-3">
+                                            <div className="font-semibold text-xs text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                                                <span>👨‍👩‍👧</span> Salidas Familiares / Llegada Padres
+                                            </div>
+
+                                            {/* Comida */}
+                                            <div className="flex items-center justify-between gap-2">
+                                                <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5 shrink-0">
+                                                    <span>🍽️</span> Salida Comida:
+                                                </label>
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="time"
+                                                        value={modalLunchTime}
+                                                        onChange={e => setModalLunchTime(e.target.value)}
+                                                        className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                                    />
+                                                    {modalLunchTime && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setModalLunchTime('')}
+                                                            className="text-xs text-red-500 hover:text-red-700 p-1 font-bold"
+                                                            title="Borrar hora de comida"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {/* Botones rápidos Comida */}
+                                            <div className="flex items-center gap-1 text-xs">
+                                                <span className="text-gray-400">Rápido:</span>
+                                                {['11:30', '13:00', '14:00', '14:30'].map(t => (
+                                                    <button
+                                                        key={t}
+                                                        type="button"
+                                                        onClick={() => setModalLunchTime(t)}
+                                                        className={`px-2 py-0.5 rounded border transition ${modalLunchTime === t ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                                    >
+                                                        {t}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* Cena */}
+                                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-amber-100">
+                                                <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5 shrink-0">
+                                                    <span>🌙</span> Salida Cena:
+                                                </label>
+                                                <div className="flex items-center gap-1.5">
+                                                    <input
+                                                        type="time"
+                                                        value={modalDinnerTime}
+                                                        onChange={e => setModalDinnerTime(e.target.value)}
+                                                        className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                    />
+                                                    {modalDinnerTime && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setModalDinnerTime('')}
+                                                            className="text-xs text-red-500 hover:text-red-700 p-1 font-bold"
+                                                            title="Borrar hora de cena"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {/* Botones rápidos Cena */}
+                                            <div className="flex items-center gap-1 text-xs">
+                                                <span className="text-gray-400">Rápido:</span>
+                                                {['20:00', '20:30', '21:00', '21:30'].map(t => (
+                                                    <button
+                                                        key={t}
+                                                        type="button"
+                                                        onClick={() => setModalDinnerTime(t)}
+                                                        className={`px-2 py-0.5 rounded border transition ${modalDinnerTime === t ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                                    >
+                                                        {t}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </>
+
+                                        {/* Nota general */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                                                📝 Nota adicional
+                                            </label>
+                                            <textarea
+                                                value={noteText}
+                                                onChange={e => setNoteText(e.target.value)}
+                                                placeholder="Ej: Salimos a comer al restaurante X, vienen los abuelos..."
+                                                className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:border-transparent resize-none"
+                                                rows={2}
+                                                maxLength={100}
+                                            />
+                                            <p className="text-[11px] text-gray-400 text-right mt-0.5">{noteText.length}/100</p>
+                                        </div>
+
+                                        <div className="flex gap-2 pt-2">
+                                            <button onClick={closeNoteModal} className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition">
+                                                Cancelar
+                                            </button>
+                                            <button onClick={saveDetails} className="flex-1 px-4 py-2 rounded-lg bg-medical-600 text-white text-sm font-medium hover:bg-medical-700 transition">
+                                                Guardar Cambios
+                                            </button>
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <>
-                                        <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 min-h-[60px]">
-                                            {notes[noteModal] || <span className="text-gray-400 italic">No note</span>}
+                                    <div className="space-y-3">
+                                        {(lunchTimes[noteModal] || dinnerTimes[noteModal]) && (
+                                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 space-y-2">
+                                                <div className="text-xs font-bold text-amber-900 uppercase">👨‍👩‍👧 Salidas programadas:</div>
+                                                {lunchTimes[noteModal] && (
+                                                    <div className="text-sm font-medium text-amber-900 flex items-center gap-2">
+                                                        <span>🍽️</span> Salida a comer: <strong className="bg-white px-2 py-0.5 rounded border border-amber-200">{lunchTimes[noteModal]}</strong>
+                                                    </div>
+                                                )}
+                                                {dinnerTimes[noteModal] && (
+                                                    <div className="text-sm font-medium text-indigo-900 flex items-center gap-2">
+                                                        <span>🌙</span> Salida a cenar: <strong className="bg-white px-2 py-0.5 rounded border border-indigo-200">{dinnerTimes[noteModal]}</strong>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Nota:</div>
+                                            <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 min-h-[50px]">
+                                                {notes[noteModal] || <span className="text-gray-400 italic">Sin nota adicional</span>}
+                                            </div>
                                         </div>
-                                        <button onClick={closeNoteModal} className="w-full mt-3 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition">Close</button>
-                                    </>
+
+                                        <button onClick={closeNoteModal} className="w-full mt-2 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition">
+                                            Cerrar
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>

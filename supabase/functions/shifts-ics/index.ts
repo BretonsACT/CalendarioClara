@@ -17,6 +17,8 @@ interface Shift {
   date: string;
   shift_type: string;
   note: string | null;
+  lunch_time?: string | null;
+  dinner_time?: string | null;
 }
 
 // Shift type -> start time, end time (HH:MM, local Madrid time) and display label.
@@ -54,6 +56,18 @@ function addDays(dateStr: string, days: number): string {
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + days);
   return dt.toISOString().slice(0, 10);
+}
+
+/** Calculate an end time adding minutes to HH:MM (defaults to 2 hours if end calculation wraps or is needed). */
+function addMinutesToTime(timeStr: string, minutes: number): { time: string; nextDay: boolean } {
+  const [h, m] = timeStr.split(':').map(Number);
+  const totalMinutes = h * 60 + m + minutes;
+  const newHour = Math.floor(totalMinutes / 60);
+  const remMinutes = totalMinutes % 60;
+  const nextDay = newHour >= 24;
+  const formattedHour = String(newHour % 24).padStart(2, '0');
+  const formattedMin = String(remMinutes).padStart(2, '0');
+  return { time: `${formattedHour}:${formattedMin}`, nextDay };
 }
 
 /** Escape a text value per RFC 5545 (backslash, semicolon, comma, newlines). */
@@ -100,31 +114,68 @@ function buildCalendar(rows: Shift[]): string {
     'PRODID:-//CalendarioClara//Turnos ES//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Clara Turnos',
+    'X-WR-CALNAME:Clara Turnos y Salidas',
     'X-WR-TIMEZONE:Europe/Madrid',
   ];
 
   const dtStamp = toUTCDatestamp(new Date());
 
   for (const row of rows) {
+    // 1. Shift event
     const shift = SHIFT_MAP[row.shift_type];
-    if (!shift) continue; // skip 'vacation', 'none', and any unknown types
+    if (shift) {
+      // Night shift ends at 00:00 on the NEXT day (no T240000).
+      const endDate = shift.end === '00:00' ? addDays(row.date, 1) : row.date;
 
-    // Night shift ends at 00:00 on the NEXT day (no T240000).
-    const endDate = shift.end === '00:00' ? addDays(row.date, 1) : row.date;
-
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:clara-shift-${row.date}@calendarioclara`);
-    lines.push(`DTSTAMP:${dtStamp}`);
-    lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${shift.start.replace(':', '')}00`);
-    lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${shift.end.replace(':', '')}00`);
-    lines.push(`SUMMARY:Clara - ${shift.label}`);
-    if (row.note && row.note.trim() !== '') {
-      lines.push(`DESCRIPTION:${escapeText(row.note)}`);
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:clara-shift-${row.date}@calendarioclara`);
+      lines.push(`DTSTAMP:${dtStamp}`);
+      lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${shift.start.replace(':', '')}00`);
+      lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${shift.end.replace(':', '')}00`);
+      lines.push(`SUMMARY:Clara - ${shift.label}`);
+      if (row.note && row.note.trim() !== '') {
+        lines.push(`DESCRIPTION:${escapeText(row.note)}`);
+      }
+      lines.push('STATUS:CONFIRMED');
+      lines.push('TRANSP:OPAQUE');
+      lines.push('END:VEVENT');
     }
-    lines.push('STATUS:CONFIRMED');
-    lines.push('TRANSP:OPAQUE');
-    lines.push('END:VEVENT');
+
+    // 2. Family Lunch Event
+    if (row.lunch_time && row.lunch_time.trim() !== '') {
+      const cleanTime = row.lunch_time.trim();
+      const endInfo = addMinutesToTime(cleanTime, 120); // 2 hours duration
+      const endDate = endInfo.nextDay ? addDays(row.date, 1) : row.date;
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:clara-lunch-${row.date}@calendarioclara`);
+      lines.push(`DTSTAMP:${dtStamp}`);
+      lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${cleanTime.replace(':', '')}00`);
+      lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${endInfo.time.replace(':', '')}00`);
+      lines.push(`SUMMARY:🍽️ Salida a comer (${cleanTime})`);
+      lines.push(`DESCRIPTION:Llegada padres / Salida a comer`);
+      lines.push('STATUS:CONFIRMED');
+      lines.push('TRANSP:OPAQUE');
+      lines.push('END:VEVENT');
+    }
+
+    // 3. Family Dinner Event
+    if (row.dinner_time && row.dinner_time.trim() !== '') {
+      const cleanTime = row.dinner_time.trim();
+      const endInfo = addMinutesToTime(cleanTime, 120); // 2 hours duration
+      const endDate = endInfo.nextDay ? addDays(row.date, 1) : row.date;
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:clara-dinner-${row.date}@calendarioclara`);
+      lines.push(`DTSTAMP:${dtStamp}`);
+      lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${cleanTime.replace(':', '')}00`);
+      lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${endInfo.time.replace(':', '')}00`);
+      lines.push(`SUMMARY:🌙 Salida a cenar (${cleanTime})`);
+      lines.push(`DESCRIPTION:Llegada padres / Salida a cenar`);
+      lines.push('STATUS:CONFIRMED');
+      lines.push('TRANSP:OPAQUE');
+      lines.push('END:VEVENT');
+    }
   }
 
   lines.push('END:VCALENDAR');
@@ -151,7 +202,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase
       .from('shifts')
-      .select('date, shift_type, note')
+      .select('date, shift_type, note, lunch_time, dinner_time')
       .order('date', { ascending: true });
 
     if (error) {

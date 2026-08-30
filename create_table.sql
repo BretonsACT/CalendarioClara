@@ -3,11 +3,15 @@ create table public.shifts (
   date text primary key,
   shift_type text not null,
   note text,
+  lunch_time text,
+  dinner_time text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- If the table already exists, just add the note column:
--- ALTER TABLE public.shifts ADD COLUMN note text;
+-- If the table already exists, run this migration to add the new columns:
+-- ALTER TABLE public.shifts ADD COLUMN IF NOT EXISTS note text;
+-- ALTER TABLE public.shifts ADD COLUMN IF NOT EXISTS lunch_time text;
+-- ALTER TABLE public.shifts ADD COLUMN IF NOT EXISTS dinner_time text;
 
 -- Enable Row Level Security (RLS)
 alter table public.shifts enable row level security;
