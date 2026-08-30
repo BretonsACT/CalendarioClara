@@ -373,8 +373,12 @@
             const [view, setView] = useState('week');
             const [shifts, setShifts] = useState(INITIAL_SHIFTS);
             const [notes, setNotes] = useState({});
+            const [lunchTimes, setLunchTimes] = useState({});
+            const [dinnerTimes, setDinnerTimes] = useState({});
             const [noteModal, setNoteModal] = useState(null);
             const [noteText, setNoteText] = useState('');
+            const [modalLunchTime, setModalLunchTime] = useState('11:30');
+            const [modalDinnerTime, setModalDinnerTime] = useState('20:30');
             const [longPressTimer, setLongPressTimer] = useState(null);
 
             useEffect(() => {
@@ -388,9 +392,13 @@
                     if (data) {
                         const dbShifts = {};
                         const dbNotes = {};
+                        const dbLunch = {};
+                        const dbDinner = {};
                         data.forEach(row => {
                             dbShifts[row.date] = row.shift_type === 'none' ? null : row.shift_type;
                             if (row.note) dbNotes[row.date] = row.note;
+                            if (row.lunch_time) dbLunch[row.date] = row.lunch_time;
+                            if (row.dinner_time) dbDinner[row.date] = row.dinner_time;
                         });
 
                         setShifts(prev => ({
@@ -398,6 +406,8 @@
                             ...dbShifts
                         }));
                         setNotes(dbNotes);
+                        setLunchTimes(dbLunch);
+                        setDinnerTimes(dbDinner);
                     }
                 };
 
@@ -451,13 +461,17 @@
 
                 const dbValue = nextValue || 'none';
 
+                const payload = {
+                    date: dateStr,
+                    shift_type: dbValue,
+                    note: notes[dateStr] || null,
+                    lunch_time: lunchTimes[dateStr] || (nextValue === 'lunch' ? '11:30' : null),
+                    dinner_time: dinnerTimes[dateStr] || (nextValue === 'dinner' ? '20:30' : null),
+                };
+
                 const { error } = await supabase
                     .from('shifts')
-                    .upsert({
-                        date: dateStr,
-                        shift_type: dbValue,
-                        note: notes[dateStr] || null
-                    });
+                    .upsert(payload);
 
                 if (error) {
                     console.error("Error saving shift:", error);
@@ -469,6 +483,8 @@
                 if (e) e.preventDefault();
                 setNoteModal(dateStr);
                 setNoteText(notes[dateStr] || '');
+                setModalLunchTime(lunchTimes[dateStr] || '11:30');
+                setModalDinnerTime(dinnerTimes[dateStr] || '20:30');
             };
 
             const closeNoteModal = () => {
@@ -490,6 +506,7 @@
                 if (!noteModal) return;
                 const dateStr = noteModal;
                 const trimmedNote = noteText.trim();
+                const currentShift = shifts[dateStr] || 'none';
 
                 if (trimmedNote) {
                     setNotes(prev => ({ ...prev, [dateStr]: trimmedNote }));
@@ -501,13 +518,26 @@
                     });
                 }
 
-                const currentShift = shifts[dateStr] || 'none';
+                let newLunch = lunchTimes[dateStr];
+                let newDinner = dinnerTimes[dateStr];
+
+                if (currentShift === 'lunch') {
+                    newLunch = modalLunchTime;
+                    setLunchTimes(prev => ({ ...prev, [dateStr]: modalLunchTime }));
+                }
+                if (currentShift === 'dinner') {
+                    newDinner = modalDinnerTime;
+                    setDinnerTimes(prev => ({ ...prev, [dateStr]: modalDinnerTime }));
+                }
+
                 const { error } = await supabase
                     .from('shifts')
                     .upsert({
                         date: dateStr,
                         shift_type: currentShift,
-                        note: trimmedNote || null
+                        note: trimmedNote || null,
+                        lunch_time: newLunch || null,
+                        dinner_time: newDinner || null
                     });
 
                 if (error) {
@@ -590,6 +620,11 @@
                                 const isCurrentMonth = DateUtils.isSameMonth(day, currentDate);
                                 const shiftId = shifts[dateStr];
                                 const shift = shiftId ? Object.values(SHIFT_TYPES).find(t => t.id === shiftId) : null;
+                                const shiftLabel = shift ? (
+                                    shiftId === 'lunch' ? `Comida (${lunchTimes[dateStr] || '11:30'})` :
+                                    shiftId === 'dinner' ? `Cena (${dinnerTimes[dateStr] || '20:30'})` :
+                                    shift.label
+                                ) : '';
 
                                 const opacityClass = (view === 'month' && !isCurrentMonth) ? 'opacity-30' : 'opacity-100';
                                 const ShiftIcon = shift ? shift.icon : null;
@@ -625,7 +660,7 @@
                                                      <ShiftIcon />
                                                  </div>
                                                  <span className="text-[11px] md:text-xs font-black uppercase text-gray-800 tracking-tight leading-tight">
-                                                     {shift.label}
+                                                     {shiftLabel}
                                                  </span>
                                              </div>
                                          )}
@@ -663,9 +698,42 @@
                                             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Turno actual:</span>
                                             <span className="text-sm font-bold text-gray-800">
                                                 {shifts[noteModal] && SHIFT_TYPES[shifts[noteModal].toUpperCase()] ? 
-                                                    SHIFT_TYPES[shifts[noteModal].toUpperCase()].label : 'Sin turno'}
+                                                    (shifts[noteModal] === 'lunch' ? `Comida (${lunchTimes[noteModal] || '11:30'})` :
+                                                     shifts[noteModal] === 'dinner' ? `Cena (${dinnerTimes[noteModal] || '20:30'})` :
+                                                     SHIFT_TYPES[shifts[noteModal].toUpperCase()].label) : 'Sin turno'}
                                             </span>
                                         </div>
+
+                                        {/* Hora personalizada para Comida / Cena */}
+                                        {shifts[noteModal] === 'lunch' && (
+                                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-amber-900 uppercase">🍽️ Hora de salida a comer:</label>
+                                                    <span className="text-[11px] text-amber-700">Cambia la hora de la comida</span>
+                                                </div>
+                                                <input
+                                                    type="time"
+                                                    value={modalLunchTime}
+                                                    onChange={e => setModalLunchTime(e.target.value)}
+                                                    className="px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-sm font-bold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {shifts[noteModal] === 'dinner' && (
+                                            <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200 flex items-center justify-between">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-indigo-900 uppercase">🌙 Hora de salida a cenar:</label>
+                                                    <span className="text-[11px] text-indigo-700">Cambia la hora de la cena</span>
+                                                </div>
+                                                <input
+                                                    type="time"
+                                                    value={modalDinnerTime}
+                                                    onChange={e => setModalDinnerTime(e.target.value)}
+                                                    className="px-2.5 py-1.5 bg-white border border-indigo-300 rounded-lg text-sm font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                            </div>
+                                        )}
 
                                         {/* Nota general */}
                                         <div>
@@ -689,7 +757,7 @@
                                                 Cancelar
                                             </button>
                                             <button onClick={saveDetails} className="flex-1 px-4 py-2 rounded-lg bg-medical-600 text-white text-sm font-medium hover:bg-medical-700 transition">
-                                                Guardar Nota
+                                                Guardar Detalles
                                             </button>
                                         </div>
                                     </div>
@@ -699,9 +767,29 @@
                                             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Turno:</span>
                                             <span className="text-sm font-bold text-gray-800">
                                                 {shifts[noteModal] && SHIFT_TYPES[shifts[noteModal].toUpperCase()] ? 
-                                                    SHIFT_TYPES[shifts[noteModal].toUpperCase()].label : 'Sin turno'}
+                                                    (shifts[noteModal] === 'lunch' ? `Comida (${lunchTimes[noteModal] || '11:30'})` :
+                                                     shifts[noteModal] === 'dinner' ? `Cena (${dinnerTimes[noteModal] || '20:30'})` :
+                                                     SHIFT_TYPES[shifts[noteModal].toUpperCase()].label) : 'Sin turno'}
                                             </span>
                                         </div>
+
+                                        {shifts[noteModal] === 'lunch' && (
+                                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-center justify-between">
+                                                <span className="text-xs font-bold text-amber-900 uppercase">🍽️ Salida a comer:</span>
+                                                <span className="text-sm font-bold text-amber-900 bg-white px-2.5 py-1 rounded border border-amber-200">
+                                                    {lunchTimes[noteModal] || '11:30'}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {shifts[noteModal] === 'dinner' && (
+                                            <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center justify-between">
+                                                <span className="text-xs font-bold text-indigo-900 uppercase">🌙 Salida a cenar:</span>
+                                                <span className="text-sm font-bold text-indigo-900 bg-white px-2.5 py-1 rounded border border-indigo-200">
+                                                    {dinnerTimes[noteModal] || '20:30'}
+                                                </span>
+                                            </div>
+                                        )}
 
                                         <div>
                                             <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Nota:</div>

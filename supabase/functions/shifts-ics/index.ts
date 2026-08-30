@@ -126,15 +126,34 @@ function buildCalendar(rows: Shift[]): string {
     const shift = SHIFT_MAP[row.shift_type];
     if (!shift) continue; // skip 'vacation', 'none', and any unknown types
 
-    // Night shift ends at 00:00 on the NEXT day (no T240000).
-    const endDate = shift.end === '00:00' ? addDays(row.date, 1) : row.date;
+    let startTime = shift.start;
+    let endTime = shift.end;
+    let label = shift.label;
+
+    if (row.shift_type === 'lunch') {
+      const customTime = row.lunch_time && row.lunch_time.trim() !== '' ? row.lunch_time.trim() : '11:30';
+      startTime = customTime;
+      const endInfo = addMinutesToTime(customTime, 240); // 4 hours
+      endTime = endInfo.time;
+      label = `Comida (${customTime})`;
+    } else if (row.shift_type === 'dinner') {
+      const customTime = row.dinner_time && row.dinner_time.trim() !== '' ? row.dinner_time.trim() : '20:30';
+      startTime = customTime;
+      const endInfo = addMinutesToTime(customTime, 180); // 3 hours
+      endTime = endInfo.time;
+      label = `Cena (${customTime})`;
+    }
+
+    // Shift ends next day if end time is 00:00 or wraps
+    const isNextDay = endTime === '00:00' || (row.shift_type === 'night');
+    const endDate = isNextDay ? addDays(row.date, 1) : row.date;
 
     lines.push('BEGIN:VEVENT');
     lines.push(`UID:clara-shift-${row.date}@calendarioclara`);
     lines.push(`DTSTAMP:${dtStamp}`);
-    lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${shift.start.replace(':', '')}00`);
-    lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${shift.end.replace(':', '')}00`);
-    lines.push(`SUMMARY:Clara - ${shift.label}`);
+    lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${startTime.replace(':', '')}00`);
+    lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${endTime.replace(':', '')}00`);
+    lines.push(`SUMMARY:Clara - ${label}`);
     if (row.note && row.note.trim() !== '') {
       lines.push(`DESCRIPTION:${escapeText(row.note)}`);
     }
