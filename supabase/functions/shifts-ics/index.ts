@@ -123,61 +123,24 @@ function buildCalendar(rows: Shift[]): string {
   const dtStamp = toUTCDatestamp(new Date());
 
   for (const row of rows) {
-    // 1. Shift event
     const shift = SHIFT_MAP[row.shift_type];
-    if (shift) {
-      // Night shift ends at 00:00 on the NEXT day (no T240000).
-      const endDate = shift.end === '00:00' ? addDays(row.date, 1) : row.date;
+    if (!shift) continue; // skip 'vacation', 'none', and any unknown types
 
-      lines.push('BEGIN:VEVENT');
-      lines.push(`UID:clara-shift-${row.date}@calendarioclara`);
-      lines.push(`DTSTAMP:${dtStamp}`);
-      lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${shift.start.replace(':', '')}00`);
-      lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${shift.end.replace(':', '')}00`);
-      lines.push(`SUMMARY:Clara - ${shift.label}`);
-      if (row.note && row.note.trim() !== '') {
-        lines.push(`DESCRIPTION:${escapeText(row.note)}`);
-      }
-      lines.push('STATUS:CONFIRMED');
-      lines.push('TRANSP:OPAQUE');
-      lines.push('END:VEVENT');
+    // Night shift ends at 00:00 on the NEXT day (no T240000).
+    const endDate = shift.end === '00:00' ? addDays(row.date, 1) : row.date;
+
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:clara-shift-${row.date}@calendarioclara`);
+    lines.push(`DTSTAMP:${dtStamp}`);
+    lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${shift.start.replace(':', '')}00`);
+    lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${shift.end.replace(':', '')}00`);
+    lines.push(`SUMMARY:Clara - ${shift.label}`);
+    if (row.note && row.note.trim() !== '') {
+      lines.push(`DESCRIPTION:${escapeText(row.note)}`);
     }
-
-    // 2. Family Lunch Event
-    if (row.lunch_time && row.lunch_time.trim() !== '') {
-      const cleanTime = row.lunch_time.trim();
-      const endInfo = addMinutesToTime(cleanTime, 120); // 2 hours duration
-      const endDate = endInfo.nextDay ? addDays(row.date, 1) : row.date;
-
-      lines.push('BEGIN:VEVENT');
-      lines.push(`UID:clara-lunch-${row.date}@calendarioclara`);
-      lines.push(`DTSTAMP:${dtStamp}`);
-      lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${cleanTime.replace(':', '')}00`);
-      lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${endInfo.time.replace(':', '')}00`);
-      lines.push(`SUMMARY:🍽️ Salida a comer (${cleanTime})`);
-      lines.push(`DESCRIPTION:Llegada padres / Salida a comer`);
-      lines.push('STATUS:CONFIRMED');
-      lines.push('TRANSP:OPAQUE');
-      lines.push('END:VEVENT');
-    }
-
-    // 3. Family Dinner Event
-    if (row.dinner_time && row.dinner_time.trim() !== '') {
-      const cleanTime = row.dinner_time.trim();
-      const endInfo = addMinutesToTime(cleanTime, 120); // 2 hours duration
-      const endDate = endInfo.nextDay ? addDays(row.date, 1) : row.date;
-
-      lines.push('BEGIN:VEVENT');
-      lines.push(`UID:clara-dinner-${row.date}@calendarioclara`);
-      lines.push(`DTSTAMP:${dtStamp}`);
-      lines.push(`DTSTART;TZID=Europe/Madrid:${toICSDate(row.date)}T${cleanTime.replace(':', '')}00`);
-      lines.push(`DTEND;TZID=Europe/Madrid:${toICSDate(endDate)}T${endInfo.time.replace(':', '')}00`);
-      lines.push(`SUMMARY:🌙 Salida a cenar (${cleanTime})`);
-      lines.push(`DESCRIPTION:Llegada padres / Salida a cenar`);
-      lines.push('STATUS:CONFIRMED');
-      lines.push('TRANSP:OPAQUE');
-      lines.push('END:VEVENT');
-    }
+    lines.push('STATUS:CONFIRMED');
+    lines.push('TRANSP:OPAQUE');
+    lines.push('END:VEVENT');
   }
 
   lines.push('END:VCALENDAR');
