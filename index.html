@@ -462,19 +462,6 @@
                 if (error) {
                     console.error("Error saving shift:", error);
                     alert("Error saving to database: " + error.message);
-                } else {
-                    let shiftName = "Cleared";
-                    if (nextValue) {
-                        const shiftDetail = Object.values(SHIFT_TYPES).find(t => t.id === nextValue);
-                        if (shiftDetail) shiftName = shiftDetail.label;
-                    }
-
-                    const message = `Hello! My shift on ${dateStr} has been updated to: ${shiftName}.`;
-                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-                    if (window.confirm(`Shift updated! Do you want to share this update to WhatsApp?\n\nMessage: "${message}"`)) {
-                        window.open(whatsappUrl, '_blank');
-                    }
                 }
             };
 
@@ -526,15 +513,6 @@
                 if (error) {
                     console.error('Error saving details:', error);
                     alert('Error saving details: ' + error.message);
-                } else {
-                    const shiftDetail = Object.values(SHIFT_TYPES).find(t => t.id === currentShift);
-                    const shiftLabel = shiftDetail ? shiftDetail.label : 'Sin turno';
-                    const message = `Actualización para ${dateStr} (${shiftLabel})${trimmedNote ? `: "${trimmedNote}"` : ''}`;
-                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-                    if (window.confirm(`Guardado correctamente. ¿Quieres compartir este detalle por WhatsApp?\n\n"${message}"`)) {
-                        window.open(whatsappUrl, '_blank');
-                    }
                 }
 
                 closeNoteModal();
